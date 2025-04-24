@@ -22,13 +22,17 @@ API_URL = os.environ.get('API_URL', 'http://localhost:5000')
 # Initialize Flask app
 app = Flask(__name__, static_folder='public')
 
-# Configure CORS to allow requests from the frontend domain
+# Configure CORS to allow all origins (most permissive configuration)
 CORS(app,
-     origins=["https://classifier-app.vercel.app", "http://localhost:3000"],
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization"],
-     methods=["GET", "POST", "OPTIONS"],
-     expose_headers=["Content-Type", "Authorization"])
+     resources={r"/*": {
+         "origins": "*",
+         "allow_headers": "*",
+         "expose_headers": "*",
+         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+         "supports_credentials": True,
+         "max_age": 86400
+     }},
+     send_wildcard=True)
 
 # Configure session with settings that work for cross-origin requests
 app.secret_key = secrets.token_hex(16)  # Generate a random secret key
@@ -46,14 +50,53 @@ app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 # Initialize Flask-Session
 Session(app)
 
+# Handle CORS before the request is processed
+@app.before_request
+def before_request():
+    # If it's an OPTIONS request, handle it immediately
+    if request.method == 'OPTIONS':
+        response = jsonify({})
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers.set('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.set('Access-Control-Allow-Origin', '*')
+
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, ngrok-skip-browser-warning')
+        response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+
+        if origin:
+            response.headers.set('Access-Control-Allow-Credentials', 'true')
+
+        response.headers.set('Access-Control-Max-Age', '86400')
+        response.headers.set('Vary', 'Origin')
+
+        return response
+
 # Add CORS headers to all responses
 @app.after_request
 def after_request(response):
     # Add CORS headers to every response
-    response.headers.add('Access-Control-Allow-Origin', 'https://classifier-app.vercel.app')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    origin = request.headers.get('Origin')
+    if origin:
+        # If there's an origin header, use it
+        response.headers.set('Access-Control-Allow-Origin', origin)
+    else:
+        # Otherwise allow all origins
+        response.headers.set('Access-Control-Allow-Origin', '*')
+
+    # Allow all headers and methods
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, ngrok-skip-browser-warning')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+
+    # Allow credentials
+    if origin:
+        response.headers.set('Access-Control-Allow-Credentials', 'true')
+
+    # Add additional headers to help with CORS
+    response.headers.set('Access-Control-Max-Age', '86400')  # 24 hours
+    response.headers.set('Vary', 'Origin')
+
     return response
 
 # Path for storing labels
@@ -71,16 +114,33 @@ def sort_elements_by_area(elements, reverse=False):
 
 # Helper function to add CORS headers to responses
 def add_cors_headers(response):
-    response.headers.add('Access-Control-Allow-Origin', 'https://classifier-app.vercel.app')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    origin = request.headers.get('Origin')
+    if origin:
+        # If there's an origin header, use it
+        response.headers.set('Access-Control-Allow-Origin', origin)
+    else:
+        # Otherwise allow all origins
+        response.headers.set('Access-Control-Allow-Origin', '*')
+
+    # Allow all headers and methods
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, ngrok-skip-browser-warning')
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+
+    # Allow credentials
+    if origin:
+        response.headers.set('Access-Control-Allow-Credentials', 'true')
+
+    # Add additional headers to help with CORS
+    response.headers.set('Access-Control-Max-Age', '86400')  # 24 hours
+    response.headers.set('Vary', 'Origin')
+
     return response
 
-# Helper function for handling OPTIONS requests
+# Global OPTIONS handler for all routes
+@app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
 @app.route('/<path:path>', methods=['OPTIONS'])
 def options_handler(_):
-    # The path parameter is not used but is required by Flask routing
+    # Handle all OPTIONS requests (path parameter not used)
     response = jsonify({})
     return add_cors_headers(response)
 
@@ -240,18 +300,151 @@ def serve_static(path):
 def index():
     return send_from_directory('public', 'index.html')
 
+# Special route for handling OPTIONS requests to the root path
+@app.route('/', methods=['OPTIONS'])
+def root_options():
+    response = jsonify({})
+    # Add CORS headers explicitly
+    cors_response = add_cors_headers(response)
+    print(f"Root OPTIONS response headers: {dict(cors_response.headers)}")
+    return cors_response
+
+# Direct login endpoint that bypasses the API route
+@app.route('/direct-login', methods=['POST', 'OPTIONS'])
+def direct_login():
+    # Log the request for debugging
+    print(f"Direct login request: {request.method}")
+    print(f"Headers: {dict(request.headers)}")
+
+    if request.method == 'OPTIONS':
+        response = jsonify({})
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers.set('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.set('Access-Control-Allow-Origin', '*')
+
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, ngrok-skip-browser-warning')
+        response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        response.headers.set('Access-Control-Allow-Credentials', 'true')
+        return response
+
+    try:
+        # Get the request data
+        if request.is_json:
+            data = request.json
+        else:
+            # Try to parse the data as JSON
+            try:
+                data = json.loads(request.get_data(as_text=True))
+            except:
+                print("Failed to parse JSON data")
+                data = {}
+
+        contact_number = data.get('contactNumber')
+        password = data.get('password')
+
+        if not contact_number or not password:
+            response = jsonify({'error': 'Contact number and password are required'})
+            origin = request.headers.get('Origin')
+            if origin:
+                response.headers.set('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.set('Access-Control-Allow-Origin', '*')
+            response.headers.set('Access-Control-Allow-Credentials', 'true')
+            return response, 400
+
+        # Find user
+        db = get_db()
+        user = db.users.find_one({'contactNumber': contact_number})
+
+        if not user:
+            response = jsonify({'error': 'Invalid credentials'})
+            origin = request.headers.get('Origin')
+            if origin:
+                response.headers.set('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.set('Access-Control-Allow-Origin', '*')
+            response.headers.set('Access-Control-Allow-Credentials', 'true')
+            return response, 401
+
+        # Verify password
+        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+        if user['password'] != hashed_password:
+            response = jsonify({'error': 'Invalid credentials'})
+            origin = request.headers.get('Origin')
+            if origin:
+                response.headers.set('Access-Control-Allow-Origin', origin)
+            else:
+                response.headers.set('Access-Control-Allow-Origin', '*')
+            response.headers.set('Access-Control-Allow-Credentials', 'true')
+            return response, 401
+
+        # Generate auth token
+        auth_token = hashlib.sha256(f"{str(user['_id'])}-{secrets.token_hex(16)}".encode()).hexdigest()
+
+        # Store token
+        db.auth_tokens.update_one(
+            {'user_id': str(user['_id'])},
+            {'$set': {
+                'token': auth_token,
+                'contact_number': user['contactNumber'],
+                'created_at': datetime.datetime.now()
+            }},
+            upsert=True
+        )
+
+        # Return success response
+        response = jsonify({
+            'success': True,
+            'message': 'Login successful',
+            'user': {
+                'contactNumber': user['contactNumber']
+            },
+            'auth_token': auth_token
+        })
+
+        # Add CORS headers
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers.set('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.set('Access-Control-Allow-Origin', '*')
+        response.headers.set('Access-Control-Allow-Credentials', 'true')
+
+        return response
+    except Exception as e:
+        print(f"Error in direct_login: {str(e)}")
+        response = jsonify({'error': str(e)})
+        origin = request.headers.get('Origin')
+        if origin:
+            response.headers.set('Access-Control-Allow-Origin', origin)
+        else:
+            response.headers.set('Access-Control-Allow-Origin', '*')
+        response.headers.set('Access-Control-Allow-Credentials', 'true')
+        return response, 500
+
 # Non-prefixed route handlers that redirect to the API routes
 @app.route('/login', methods=['POST', 'OPTIONS'])
 def login_redirect():
+    # Log the request for debugging
+    print(f"Login redirect request: {request.method}")
+    print(f"Headers: {dict(request.headers)}")
+
     if request.method == 'OPTIONS':
         # Handle preflight request
         response = jsonify({})
         return add_cors_headers(response)
 
     # Forward the request to the API route
-    response = login()
-    # Add CORS headers to the response
-    return add_cors_headers(response)
+    try:
+        response = login()
+        # Add CORS headers to the response
+        return add_cors_headers(response)
+    except Exception as e:
+        print(f"Error in login_redirect: {str(e)}")
+        error_response = jsonify({"error": str(e)})
+        return add_cors_headers(error_response), 500
 
 @app.route('/logout', methods=['POST', 'OPTIONS'])
 def logout_redirect():
@@ -741,13 +934,28 @@ def register():
 
 @app.route('/api/login', methods=['POST', 'OPTIONS'])
 def login():
+    # Log the request for debugging
+    print(f"API Login request: {request.method}")
+    print(f"Headers: {dict(request.headers)}")
+    print(f"Request data: {request.get_data(as_text=True)}")
+
     # Handle preflight request
     if request.method == 'OPTIONS':
         response = jsonify({})
         return add_cors_headers(response)
 
     try:
-        data = request.json
+        # Get the request data
+        if request.is_json:
+            data = request.json
+        else:
+            # Try to parse the data as JSON
+            try:
+                data = json.loads(request.get_data(as_text=True))
+            except:
+                print("Failed to parse JSON data")
+                data = {}
+
         contact_number = data.get('contactNumber')
         password = data.get('password')
 
@@ -800,7 +1008,11 @@ def login():
             },
             'auth_token': auth_token  # Send the token to the client
         })
-        return add_cors_headers(response)
+
+        # Add CORS headers explicitly
+        cors_response = add_cors_headers(response)
+        print(f"Response headers: {dict(cors_response.headers)}")
+        return cors_response
     except Exception as e:
         print(f'Error in login: {str(e)}')
         response = jsonify({'error': str(e)})
