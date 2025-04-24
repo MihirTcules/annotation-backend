@@ -22,8 +22,13 @@ API_URL = os.environ.get('API_URL', 'http://localhost:5000')
 # Initialize Flask app
 app = Flask(__name__, static_folder='public')
 
-# Simple CORS configuration that works with credentials
-CORS(app, supports_credentials=True)
+# Configure CORS to allow requests from the frontend domain
+CORS(app,
+     origins=["https://classifier-app.vercel.app", "http://localhost:3000"],
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "OPTIONS"],
+     expose_headers=["Content-Type", "Authorization"])
 
 # Configure session with settings that work for cross-origin requests
 app.secret_key = secrets.token_hex(16)  # Generate a random secret key
@@ -41,6 +46,16 @@ app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 # Initialize Flask-Session
 Session(app)
 
+# Add CORS headers to all responses
+@app.after_request
+def after_request(response):
+    # Add CORS headers to every response
+    response.headers.add('Access-Control-Allow-Origin', 'https://classifier-app.vercel.app')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
 # Path for storing labels
 LABELS_FILE = 'labels.json'
 DETAILED_LABELS_FILE = 'detailed_labels.json'
@@ -53,6 +68,21 @@ def sort_elements_by_area(elements, reverse=False):
 
     # Sort elements by area
     return sorted(elements, key=lambda el: el["area"], reverse=reverse)
+
+# Helper function to add CORS headers to responses
+def add_cors_headers(response):
+    response.headers.add('Access-Control-Allow-Origin', 'https://classifier-app.vercel.app')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
+    return response
+
+# Helper function for handling OPTIONS requests
+@app.route('/<path:path>', methods=['OPTIONS'])
+def options_handler(_):
+    # The path parameter is not used but is required by Flask routing
+    response = jsonify({})
+    return add_cors_headers(response)
 
 # API Routes
 @app.route('/api/elements', methods=['GET'])
@@ -216,13 +246,12 @@ def login_redirect():
     if request.method == 'OPTIONS':
         # Handle preflight request
         response = jsonify({})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        return response
+        return add_cors_headers(response)
 
     # Forward the request to the API route
-    return login()
+    response = login()
+    # Add CORS headers to the response
+    return add_cors_headers(response)
 
 @app.route('/logout', methods=['POST', 'OPTIONS'])
 def logout_redirect():
@@ -710,8 +739,13 @@ def register():
         print(f'Error in register: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/login', methods=['POST'])
+@app.route('/api/login', methods=['POST', 'OPTIONS'])
 def login():
+    # Handle preflight request
+    if request.method == 'OPTIONS':
+        response = jsonify({})
+        return add_cors_headers(response)
+
     try:
         data = request.json
         contact_number = data.get('contactNumber')
@@ -722,7 +756,8 @@ def login():
         # Validate input
         if not contact_number or not password:
             print('Login failed: Missing contact number or password')
-            return jsonify({'error': 'Contact number and password are required'}), 400
+            response = jsonify({'error': 'Contact number and password are required'})
+            return add_cors_headers(response), 400
 
         # Find user
         db = get_db()
@@ -730,13 +765,15 @@ def login():
 
         if not user:
             print(f'Login failed: User not found for contact number: {contact_number}')
-            return jsonify({'error': 'Invalid credentials'}), 401
+            response = jsonify({'error': 'Invalid credentials'})
+            return add_cors_headers(response), 401
 
         # Verify password
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         if user['password'] != hashed_password:
             print(f'Login failed: Invalid password for contact number: {contact_number}')
-            return jsonify({'error': 'Invalid credentials'}), 401
+            response = jsonify({'error': 'Invalid credentials'})
+            return add_cors_headers(response), 401
 
         # Generate a simple auth token (in a real app, use JWT)
         auth_token = hashlib.sha256(f"{str(user['_id'])}-{secrets.token_hex(16)}".encode()).hexdigest()
@@ -755,7 +792,7 @@ def login():
         print(f'Auth token created for user: {contact_number}')
 
         # Return the token to the client
-        return jsonify({
+        response = jsonify({
             'success': True,
             'message': 'Login successful',
             'user': {
@@ -763,9 +800,11 @@ def login():
             },
             'auth_token': auth_token  # Send the token to the client
         })
+        return add_cors_headers(response)
     except Exception as e:
         print(f'Error in login: {str(e)}')
-        return jsonify({'error': str(e)}), 500
+        response = jsonify({'error': str(e)})
+        return add_cors_headers(response), 500
 
 @app.route('/api/logout', methods=['POST'])
 def logout():
