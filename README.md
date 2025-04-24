@@ -9,6 +9,8 @@ This is a Flask-based backend service for the annotation application.
    API_URL=http://192.168.1.98:5000
    PORT=5001
    FLASK_ENV=development
+   MONGO_URI=mongodb+srv://username:password@cluster.mongodb.net/?ssl=true
+   MONGO_DB_NAME=YourDatabaseName
    ```
 
 2. Install dependencies:
@@ -34,6 +36,8 @@ This is a Flask-based backend service for the annotation application.
    - Environment Variables:
      - `API_URL`: URL of your backend API service
      - `FLASK_ENV`: production
+     - `MONGO_URI`: Your MongoDB connection string
+     - `MONGO_DB_NAME`: Your MongoDB database name
 
 ### Option 2: Using render.yaml (Blueprint)
 
