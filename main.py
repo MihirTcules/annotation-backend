@@ -489,7 +489,10 @@ def proxy_get_user_tasks():
         response = requests.post(
             f'{API_URL}/get-user-tasks',
             json={'contact_number': contact_number},
-            headers={'Content-Type': 'application/json'}
+            headers={
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
         )
 
         # Log the response for debugging
@@ -522,7 +525,10 @@ def proxy_create_annotation():
         response = requests.post(
             f'{API_URL}/create',
             json={'filename': filename},
-            headers={'Content-Type': 'application/json'}
+            headers={
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
         )
 
         # Log the response for debugging
@@ -611,7 +617,10 @@ def proxy_append_annotation():
                 'filename': filename,
                 'data': annotation_data
             },
-            headers={'Content-Type': 'application/json'}
+            headers={
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
         )
 
         # Log the response for debugging
@@ -651,7 +660,10 @@ def proxy_get_bounding_boxes():
         # Forward the request to the actual API
         response = requests.get(
             f'{API_URL}/get/{filename}',
-            headers={'Accept': 'application/json'}
+            headers={
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            }
         )
 
         # Log the response for debugging
