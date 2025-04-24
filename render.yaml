@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: flask-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: API_URL
+        value: https://your-api-url.com  # Replace with your actual API URL
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.9.12
