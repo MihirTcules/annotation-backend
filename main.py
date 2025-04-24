@@ -405,7 +405,13 @@ def proxy_get_user_tasks():
         print(f'Proxy API response content: {response.text}')
 
         # Return the response from the API
-        return response.json(), response.status_code
+        # Wrap the response.json() in jsonify() to ensure proper Flask response format
+        try:
+            response_data = response.json()
+            return jsonify(response_data), response.status_code
+        except ValueError:
+            # Handle case where response is not valid JSON
+            return jsonify({'error': 'Invalid JSON response from API', 'content': response.text}), 500
     except Exception as e:
         print(f'Error in proxy_get_user_tasks: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -432,7 +438,13 @@ def proxy_create_annotation():
         print(f'Create API response content: {response.text}')
 
         # Return the response from the API
-        return response.json(), response.status_code
+        # Wrap the response.json() in jsonify() to ensure proper Flask response format
+        try:
+            response_data = response.json()
+            return jsonify(response_data), response.status_code
+        except ValueError:
+            # Handle case where response is not valid JSON
+            return jsonify({'error': 'Invalid JSON response from API', 'content': response.text}), 500
     except Exception as e:
         print(f'Error in proxy_create_annotation: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -515,7 +527,13 @@ def proxy_append_annotation():
         print(f'Proxy append API response content: {response.text}')
 
         # Return the response from the API
-        return response.json(), response.status_code
+        # Wrap the response.json() in jsonify() to ensure proper Flask response format
+        try:
+            response_data = response.json()
+            return jsonify(response_data), response.status_code
+        except ValueError:
+            # Handle case where response is not valid JSON
+            return jsonify({'error': 'Invalid JSON response from API', 'content': response.text}), 500
     except Exception as e:
         print(f'Error in proxy_append_annotation: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -549,7 +567,13 @@ def proxy_get_bounding_boxes():
         print(f'Get bounding boxes API response content: {response.text}')
 
         # Return the response from the API
-        return response.json(), response.status_code
+        # Wrap the response.json() in jsonify() to ensure proper Flask response format
+        try:
+            response_data = response.json()
+            return jsonify(response_data), response.status_code
+        except ValueError:
+            # Handle case where response is not valid JSON
+            return jsonify({'error': 'Invalid JSON response from API', 'content': response.text}), 500
     except Exception as e:
         print(f'Error in proxy_get_bounding_boxes: {str(e)}')
         return jsonify({'error': str(e)}), 500
