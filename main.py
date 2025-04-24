@@ -22,8 +22,13 @@ API_URL = os.environ.get('API_URL', 'http://localhost:5000')
 # Initialize Flask app
 app = Flask(__name__, static_folder='public')
 
-# Simple CORS configuration that works with credentials
-CORS(app, supports_credentials=True)
+# Full CORS configuration for all origins, methods, and headers
+CORS(app,
+     resources={r"/*": {"origins": "*"}},
+     supports_credentials=True,
+     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"],
+     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+     expose_headers=["Content-Type", "Authorization"])
 
 # Configure session with settings that work for cross-origin requests
 app.secret_key = secrets.token_hex(16)  # Generate a random secret key
@@ -40,6 +45,26 @@ app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 
 # Initialize Flask-Session
 Session(app)
+
+# Add CORS headers to all responses
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
+
+# Global OPTIONS route handler for CORS preflight requests
+@app.route('/', defaults={'path': ''}, methods=['OPTIONS'])
+@app.route('/<path:path>', methods=['OPTIONS'])
+def options_handler(path):
+    response = app.make_default_options_response()
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin,Access-Control-Request-Method,Access-Control-Request-Headers')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH')
+    response.headers.add('Access-Control-Allow-Credentials', 'true')
+    return response
 
 # Path for storing labels
 LABELS_FILE = 'labels.json'
