@@ -210,6 +210,98 @@ def serve_static(path):
 def index():
     return send_from_directory('public', 'index.html')
 
+# Non-prefixed route handlers that redirect to the API routes
+@app.route('/login', methods=['POST', 'OPTIONS'])
+def login_redirect():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return login()
+
+@app.route('/logout', methods=['POST', 'OPTIONS'])
+def logout_redirect():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return logout()
+
+@app.route('/user', methods=['GET', 'OPTIONS'])
+def user_redirect():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return get_user()
+
+@app.route('/proxy/get-user-tasks', methods=['POST', 'OPTIONS'])
+def proxy_tasks_redirect():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return proxy_get_user_tasks()
+
+@app.route('/proxy/create', methods=['POST', 'OPTIONS'])
+def proxy_create_redirect():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return proxy_create_annotation()
+
+@app.route('/proxy/get-bounding-boxes', methods=['GET', 'OPTIONS'])
+def proxy_get_bounding_boxes_redirect():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return proxy_get_bounding_boxes()
+
+@app.route('/proxy/append', methods=['POST', 'OPTIONS'])
+def proxy_append_redirect():
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return proxy_append_annotation()
+
 @app.route("/api/save-annotation", methods=["POST", "GET"])
 def save_json():
     filename = request.args.get("file")
