@@ -236,30 +236,38 @@ def index():
     return send_from_directory('public', 'index.html')
 
 # Non-prefixed route handlers that redirect to the API routes
-@app.route('/login', methods=['POST', 'OPTIONS'])
+@app.route('/login', methods=['POST', 'OPTIONS', 'GET'])
 def login_redirect():
     if request.method == 'OPTIONS':
         # Handle preflight request
         response = jsonify({})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS,GET')
         return response
 
-    # Forward the request to the API route
+    if request.method == 'GET':
+        # Return a simple response for GET requests
+        return jsonify({"message": "Login endpoint. Please use POST method to login."}), 200
+
+    # Forward the request to the API login route
     return login()
 
-@app.route('/logout', methods=['POST', 'OPTIONS'])
+@app.route('/logout', methods=['POST', 'OPTIONS', 'GET'])
 def logout_redirect():
     if request.method == 'OPTIONS':
         # Handle preflight request
         response = jsonify({})
         response.headers.add('Access-Control-Allow-Origin', '*')
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS,GET')
         return response
 
-    # Forward the request to the API route
+    if request.method == 'GET':
+        # Return a simple response for GET requests
+        return jsonify({"message": "Logout endpoint. Please use POST method to logout."}), 200
+
+    # Forward the request to the API logout route
     return logout()
 
 @app.route('/user', methods=['GET', 'OPTIONS'])
@@ -272,7 +280,7 @@ def user_redirect():
         response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
         return response
 
-    # Forward the request to the API route
+    # Forward the request to the API user route
     return get_user()
 
 @app.route('/proxy/get-user-tasks', methods=['POST', 'OPTIONS'])
@@ -285,7 +293,7 @@ def proxy_tasks_redirect():
         response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
         return response
 
-    # Forward the request to the API route
+    # Forward the request to the API proxy route
     return proxy_get_user_tasks()
 
 @app.route('/proxy/create', methods=['POST', 'OPTIONS'])
