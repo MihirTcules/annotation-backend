@@ -41,8 +41,3 @@ ENV/
 # OS specific
 .DS_Store
 Thumbs.db
-
-# Application specific
-*.json
-!package.json
-!package-lock.json
