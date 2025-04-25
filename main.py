@@ -23,7 +23,7 @@ API_URL = os.environ.get('API_URL', 'http://localhost:5000')
 app = Flask(__name__, static_folder='public')
 
 # Simple CORS configuration that works with credentials
-CORS(app, supports_credentials=True, origins=['https://classifier-app.vercel.app'])
+CORS(app, supports_credentials=True, origins=['https://classifier-app.vercel.app', 'https://vite-react-nine-teal-56.vercel.app'])
 
 # Configure session with settings that work for cross-origin requests
 app.secret_key = secrets.token_hex(16)  # Generate a random secret key
@@ -266,13 +266,13 @@ def proxy_tasks_redirect():
 @app.route('/proxy/create', methods=['POST', 'OPTIONS'])
 def proxy_create_redirect():
     origin = request.headers.get('Origin')
-    allowed_origin = 'https://classifier-app.vercel.app'
+    allowed_origin = ['https://classifier-app.vercel.app', 'https://vite-react-nine-teal-56.vercel.app']
     print(f'Origin:--------------------------------------- {origin}')
 
     if request.method == 'OPTIONS':
         # Handle preflight request
         response = jsonify({})
-        if origin == allowed_origin:
+        if origin in allowed_origin:
             response.headers['Access-Control-Allow-Origin'] = origin
             response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
