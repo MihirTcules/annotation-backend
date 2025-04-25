@@ -22,20 +22,15 @@ API_URL = os.environ.get('API_URL', 'http://localhost:5000')
 # Initialize Flask app
 app = Flask(__name__, static_folder='public')
 
-# Configure CORS to allow requests from Vercel frontend
-CORS(app,
-     origins=["https://classifier-app.vercel.app", "http://localhost:3000", "*"],
-     supports_credentials=True,
-     allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept", "Origin"],
-     methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-     expose_headers=["Content-Type", "Authorization"])
+# Simple CORS configuration that works with credentials
+CORS(app, supports_credentials=True, origins=['https://classifier-app.vercel.app'])
 
 # Configure session with settings that work for cross-origin requests
 app.secret_key = secrets.token_hex(16)  # Generate a random secret key
 app.config['SESSION_TYPE'] = 'filesystem'
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = None  # None is required for cross-origin requests
-app.config['SESSION_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['SESSION_COOKIE_SECURE'] = True  # Set to True in production with HTTPS
 app.config['SESSION_COOKIE_PATH'] = '/'
 app.config['SESSION_COOKIE_DOMAIN'] = None  # Allow the browser to set the cookie domain
 app.config['SESSION_PERMANENT'] = True  # Make session permanent
@@ -45,16 +40,6 @@ app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
 
 # Initialize Flask-Session
 Session(app)
-
-# Function to add CORS headers to all responses
-@app.after_request
-def add_cors_headers(response):
-    # Allow requests from the Vercel frontend
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin')
-    response.headers.add('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    response.headers.add('Access-Control-Allow-Credentials', 'true')
-    return response
 
 # Path for storing labels
 LABELS_FILE = 'labels.json'
@@ -232,9 +217,8 @@ def login_redirect():
         # Handle preflight request
         response = jsonify({})
         response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
         return response
 
     # Forward the request to the API route
@@ -281,10 +265,16 @@ def proxy_tasks_redirect():
 
 @app.route('/proxy/create', methods=['POST', 'OPTIONS'])
 def proxy_create_redirect():
+    origin = request.headers.get('Origin')
+    allowed_origin = 'https://classifier-app.vercel.app'
+    print(f'Origin:--------------------------------------- {origin}')
+
     if request.method == 'OPTIONS':
         # Handle preflight request
         response = jsonify({})
-        response.headers.add('Access-Control-Allow-Origin', '*')
+        if origin == allowed_origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
         return response
@@ -726,17 +716,8 @@ def register():
         print(f'Error in register: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/login', methods=['POST', 'OPTIONS'])
+@app.route('/api/login', methods=['POST'])
 def login():
-    # Handle preflight request
-    if request.method == 'OPTIONS':
-        response = jsonify({})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin')
-        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-
     try:
         data = request.json
         contact_number = data.get('contactNumber')
@@ -779,8 +760,8 @@ def login():
 
         print(f'Auth token created for user: {contact_number}')
 
-        # Create response with CORS headers
-        response = jsonify({
+        # Return the token to the client
+        return jsonify({
             'success': True,
             'message': 'Login successful',
             'user': {
@@ -788,12 +769,6 @@ def login():
             },
             'auth_token': auth_token  # Send the token to the client
         })
-
-        # Add CORS headers explicitly to ensure they're present
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-
-        return response
     except Exception as e:
         print(f'Error in login: {str(e)}')
         return jsonify({'error': str(e)}), 500
@@ -829,17 +804,8 @@ def logout():
         print(f'Error in logout: {str(e)}')
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/user', methods=['GET', 'OPTIONS'])
+@app.route('/api/user', methods=['GET'])
 def get_user():
-    # Handle preflight request
-    if request.method == 'OPTIONS':
-        response = jsonify({})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,Accept,Origin')
-        response.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
-
     try:
         # Log request information for debugging
         print(f'Request method: {request.method}')
@@ -850,15 +816,11 @@ def get_user():
 
         if not auth_header or not auth_header.startswith('Bearer '):
             print('No Authorization header or invalid format')
-            response = jsonify({
+            return jsonify({
                 'success': False,
                 'error': 'Not authenticated',
                 'auth_required': True  # Special flag for frontend to redirect to login
-            })
-            # Add CORS headers explicitly
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            return response, 200  # Return 200 instead of 401 to avoid CORS preflight issues
+            }), 200  # Return 200 instead of 401 to avoid CORS preflight issues
 
         # Extract the token
         token = auth_header.split(' ')[1]
@@ -870,15 +832,11 @@ def get_user():
 
         if not token_doc:
             print('Invalid or expired token')
-            response = jsonify({
+            return jsonify({
                 'success': False,
                 'error': 'Invalid or expired token',
                 'auth_required': True
-            })
-            # Add CORS headers explicitly
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            return response, 200
+            }), 200
 
         # Get the user information
         user_id = token_doc['user_id']
@@ -893,36 +851,24 @@ def get_user():
             print(f'User not found in database: user_id={user_id}')
             # Remove the invalid token
             db.auth_tokens.delete_one({'token': token})
-            response = jsonify({
+            return jsonify({
                 'success': False,
                 'error': 'User not found',
                 'auth_required': True
-            })
-            # Add CORS headers explicitly
-            response.headers.add('Access-Control-Allow-Origin', '*')
-            response.headers.add('Access-Control-Allow-Credentials', 'true')
-            return response, 200
+            }), 200
 
-        response = jsonify({
+        return jsonify({
             'success': True,
             'user': {
                 'contactNumber': contact_number
             }
         })
-        # Add CORS headers explicitly
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response
     except Exception as e:
         print(f'Error in get_user: {str(e)}')
-        response = jsonify({
+        return jsonify({
             'success': False,
             'error': str(e)
-        })
-        # Add CORS headers explicitly
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Credentials', 'true')
-        return response, 500
+        }), 500
 
 if __name__ == "__main__":
     # Get port from environment variable (Render.com sets this automatically)

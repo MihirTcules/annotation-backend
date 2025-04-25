@@ -6,7 +6,7 @@ services:
     startCommand: gunicorn app:app
     envVars:
       - key: API_URL
-        value: https://a676-103-112-218-182.ngrok-free.app  # Replace with your actual API URL
+        value: https://6a43-103-112-218-182.ngrok-free.app  # Replace with your actual API URL
       - key: FLASK_ENV
         value: production
       - key: MONGO_URI
