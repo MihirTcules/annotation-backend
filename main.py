@@ -282,6 +282,25 @@ def proxy_create_redirect():
     # Forward the request to the API route
     return proxy_create_annotation()
 
+@app.route('/proxy/submit', methods=['POST', 'OPTIONS'])
+def proxy_submit_redirect():
+    origin = request.headers.get('Origin')
+    allowed_origin = ['https://classifier-app.vercel.app', 'https://vite-react-nine-teal-56.vercel.app']
+    print(f'Origin:--------------------------------------- {origin}')
+
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        if origin in allowed_origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return proxy_submit_annotation()
+
 @app.route('/proxy/get-bounding-boxes', methods=['GET', 'OPTIONS'])
 def proxy_get_bounding_boxes_redirect():
     if request.method == 'OPTIONS':
@@ -513,6 +532,57 @@ def proxy_get_user_tasks():
     except Exception as e:
         print(f'Error in proxy_get_user_tasks: {str(e)}')
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/proxy/review', methods=['POST', 'OPTIONS'])
+def proxy_review_redirect():
+    origin = request.headers.get('Origin')
+    allowed_origin = ['https://classifier-app.vercel.app', 'https://vite-react-nine-teal-56.vercel.app']
+    print(f'Origin:--------------------------------------- {origin}')
+
+    if request.method == 'OPTIONS':
+        # Handle preflight request
+        response = jsonify({})
+        if origin == allowed_origin:
+            response.headers['Access-Control-Allow-Origin'] = origin
+            response.headers['Access-Control-Allow-Credentials'] = 'true'
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+        return response
+
+    # Forward the request to the API route
+    return proxy_review_annotation()
+
+@app.route('/api/proxy/review', methods=['POST'])
+def proxy_review_annotation():
+    try:
+        data = request.json
+        filename = data.get('filename')
+
+        if not filename:
+            return jsonify({'error': 'Filename is required'}), 400
+
+        # Forward the request to the actual API
+        response = requests.post(
+            f'{API_URL}/review',
+            json={'filename': filename},
+            headers={'Content-Type': 'application/json'}
+        )
+
+        # Log the response for debugging
+        print(f'Create API response status: {response.status_code}')
+        print(f'Create API response content: {response.text}')
+
+        # Return the response from the API
+        # Wrap the response.json() in jsonify() to ensure proper Flask response format
+        try:
+            response_data = response.json()
+            return jsonify(response_data), response.status_code
+        except ValueError:
+            # Handle case where response is not valid JSON
+            return jsonify({'error': 'Invalid JSON response from API', 'content': response.text}), 500
+    except Exception as e:
+        print(f'Error in proxy_create_annotation: {str(e)}')
+        return jsonify({'error': str(e)}), 500
 
 # Proxy route for create annotation
 @app.route('/api/proxy/create', methods=['POST'])
@@ -527,6 +597,38 @@ def proxy_create_annotation():
         # Forward the request to the actual API
         response = requests.post(
             f'{API_URL}/create',
+            json={'filename': filename},
+            headers={'Content-Type': 'application/json'}
+        )
+
+        # Log the response for debugging
+        print(f'Create API response status: {response.status_code}')
+        print(f'Create API response content: {response.text}')
+
+        # Return the response from the API
+        # Wrap the response.json() in jsonify() to ensure proper Flask response format
+        try:
+            response_data = response.json()
+            return jsonify(response_data), response.status_code
+        except ValueError:
+            # Handle case where response is not valid JSON
+            return jsonify({'error': 'Invalid JSON response from API', 'content': response.text}), 500
+    except Exception as e:
+        print(f'Error in proxy_create_annotation: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/proxy/submit', methods=['POST'])
+def proxy_submit_annotation():
+    try:
+        data = request.json
+        filename = data.get('filename')
+
+        if not filename:
+            return jsonify({'error': 'Filename is required'}), 400
+
+        # Forward the request to the actual API
+        response = requests.post(
+            f'{API_URL}/submit',
             json={'filename': filename},
             headers={'Content-Type': 'application/json'}
         )
